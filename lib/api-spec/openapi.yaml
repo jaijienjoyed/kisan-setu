@@ -1,0 +1,284 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: marketplace
+    description: Farmer marketplace operations
+  - name: dashboard
+    description: Public and farmer dashboard summaries
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /market/listings:
+    get:
+      operationId: listListings
+      tags: [marketplace]
+      summary: List available produce listings
+      parameters:
+        - name: crop
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: location
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [available, reserved, sold]
+      responses:
+        "200":
+          description: Produce listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Listing"
+    post:
+      operationId: createListing
+      tags: [marketplace]
+      summary: Create a produce listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingInput"
+      responses:
+        "201":
+          description: Created listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+  /market/listings/{id}:
+    get:
+      operationId: getListing
+      tags: [marketplace]
+      summary: Get a produce listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Produce listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+        "404":
+          description: Listing not found
+    patch:
+      operationId: updateListing
+      tags: [marketplace]
+      summary: Update a produce listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingUpdate"
+      responses:
+        "200":
+          description: Updated listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+        "404":
+          description: Listing not found
+  /market/buyers:
+    get:
+      operationId: listBuyers
+      tags: [marketplace]
+      summary: List verified buyers
+      responses:
+        "200":
+          description: Verified buyers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Buyer"
+  /market/price-snapshot:
+    get:
+      operationId: getPriceSnapshot
+      tags: [marketplace]
+      summary: Get current local price comparisons
+      responses:
+        "200":
+          description: Current price comparison rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PriceSnapshot"
+  /market/transport-requests:
+    post:
+      operationId: createTransportRequest
+      tags: [marketplace]
+      summary: Request trusted transport for a listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransportRequestInput"
+      responses:
+        "201":
+          description: Created transport request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransportRequest"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get marketplace dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Listing:
+      type: object
+      required: [id, farmerName, crop, quantity, unit, askingPrice, marketPrice, location, harvestDate, status, verified]
+      properties:
+        id: { type: integer }
+        farmerName: { type: string }
+        crop: { type: string }
+        quantity: { type: number }
+        unit: { type: string }
+        askingPrice: { type: number }
+        marketPrice: { type: number }
+        location: { type: string }
+        harvestDate: { type: string, format: date }
+        status:
+          type: string
+          enum: [available, reserved, sold]
+        verified: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    ListingInput:
+      type: object
+      required: [farmerName, crop, quantity, unit, askingPrice, marketPrice, location, harvestDate]
+      properties:
+        farmerName: { type: string, minLength: 1 }
+        crop: { type: string, minLength: 1 }
+        quantity: { type: number, minimum: 0.1 }
+        unit: { type: string, minLength: 1 }
+        askingPrice: { type: number, minimum: 0 }
+        marketPrice: { type: number, minimum: 0 }
+        location: { type: string, minLength: 1 }
+        harvestDate: { type: string, format: date }
+    ListingUpdate:
+      type: object
+      properties:
+        askingPrice: { type: number, minimum: 0 }
+        status:
+          type: string
+          enum: [available, reserved, sold]
+        quantity: { type: number, minimum: 0.1 }
+    Buyer:
+      type: object
+      required: [id, name, category, location, crops, verified, responseTime]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        category: { type: string }
+        location: { type: string }
+        crops:
+          type: array
+          items: { type: string }
+        verified: { type: boolean }
+        responseTime: { type: string }
+        rating: { type: number }
+    PriceSnapshot:
+      type: object
+      required: [crop, localMandi, fairPrice, bestBuyerPrice, unit, change]
+      properties:
+        crop: { type: string }
+        localMandi: { type: number }
+        fairPrice: { type: number }
+        bestBuyerPrice: { type: number }
+        unit: { type: string }
+        change: { type: number }
+    TransportRequestInput:
+      type: object
+      required: [listingId, pickupLocation, pickupDate, vehicleType]
+      properties:
+        listingId: { type: integer }
+        pickupLocation: { type: string, minLength: 1 }
+        pickupDate: { type: string, format: date }
+        vehicleType: { type: string, minLength: 1 }
+    TransportRequest:
+      type: object
+      required: [id, listingId, pickupLocation, pickupDate, vehicleType, status, estimatedCost]
+      properties:
+        id: { type: integer }
+        listingId: { type: integer }
+        pickupLocation: { type: string }
+        pickupDate: { type: string, format: date }
+        vehicleType: { type: string }
+        status:
+          type: string
+          enum: [requested, assigned, completed]
+        estimatedCost: { type: number }
+        createdAt: { type: string, format: date-time }
+    DashboardSummary:
+      type: object
+      required: [farmersConnected, fairTradeValue, availableLots, verifiedBuyers, averagePriceLift]
+      properties:
+        farmersConnected: { type: integer }
+        fairTradeValue: { type: number }
+        availableLots: { type: integer }
+        verifiedBuyers: { type: integer }
+        averagePriceLift: { type: number }
+

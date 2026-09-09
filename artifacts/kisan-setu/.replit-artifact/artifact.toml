@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Kisan Setu"
+description = "A deployable farmer-to-buyer marketplace that helps farmers find verified buyers, compare fair local prices, and arrange trusted transport for each harvest lot. Includes a public landing page, marketplace listings, dashboard summaries, and a backend API foundation for production handoff."
+version = "1.0.0"
+id = "artifacts/kisan-setu"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22334
+
+[services.development]
+run = "pnpm --filter @workspace/kisan-setu run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/kisan-setu", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/kisan-setu/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22334"
+BASE_PATH = "/"
